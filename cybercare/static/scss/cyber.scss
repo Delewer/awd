@@ -1,0 +1,144 @@
+/* ===== CyberCare – Cybersecurity Theme (SCSS) ===== */
+
+/* Palette */
+$bg: #0b0e14;                 // deep dark
+$panel: #111624;              // dark panel
+$panel-2: #0e1422;
+$text: #edf2f7;               // light
+$muted: #9aa4b2;              // muted gray
+$primary: #00d1ff;            // neon cyan
+$secondary: #7c4dff;          // neon violet
+$success: #00d48f;            // green
+$warning: #ffcc00;            // amber
+$danger: #ff4d6d;             // red
+$glow: 0 0 25px rgba($primary, .35);
+
+/* Base */
+:root {
+  --cc-primary: #{$primary};
+  --cc-success: #{$success};
+  --cc-warning: #{$warning};
+  --cc-danger:  #{$danger};
+}
+
+html, body {
+  background: radial-gradient(1200px 600px at 20% -10%, rgba($secondary,.12), transparent 40%),
+              radial-gradient(1200px 600px at 120% 10%, rgba($primary,.10), transparent 40%),
+              $bg;
+  color: $text;
+}
+
+a { color: $primary; }
+a:hover { color: lighten($primary, 10%); }
+
+.container-cc {
+  max-width: 1100px;
+}
+
+/* Header */
+.cc-hero {
+  background: linear-gradient(135deg, rgba($panel,.85), rgba($panel-2,.85));
+  border: 1px solid rgba($primary,.15);
+  box-shadow: $glow;
+  border-radius: 18px;
+}
+
+.cc-hero__title {
+  letter-spacing: .5px;
+  font-weight: 700;
+}
+
+.cc-hero__hint {
+  color: $muted;
+}
+
+/* Input group */
+.cc-input {
+  background: $panel-2;
+  color: $text;
+  border: 1px solid rgba($primary,.25);
+}
+.cc-input::placeholder { color: rgba($text,.55); }
+.cc-btn {
+  background: $primary; color: #00121a; border: none;
+  font-weight: 700;
+  transition: transform .06s ease;
+  box-shadow: 0 6px 18px rgba($primary,.25);
+}
+.cc-btn:hover { transform: translateY(-1px); }
+
+/* Cards */
+.cc-card {
+  background: linear-gradient(180deg, rgba($panel,.9), rgba($panel-2,.9));
+  border: 1px solid rgba($primary,.12);
+  border-radius: 16px;
+  transition: transform .08s ease, box-shadow .2s ease, border-color .2s ease;
+}
+.cc-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba($primary,.25);
+  box-shadow: 0 10px 30px rgba(0,0,0,.35), $glow;
+}
+.cc-card__title {
+  font-weight: 700;
+}
+
+/* Progress bar (Bootstrap override-safe) */
+.progress.cc-progress {
+  height: 28px;
+  background: rgba($text,.06);
+  border: 1px solid rgba($primary,.15);
+  border-radius: 999px;
+}
+.cc-progress .progress-bar {
+  font-weight: 700;
+  text-shadow: 0 1px 0 rgba(0,0,0,.5);
+}
+.progress-bar.bg-success { background: linear-gradient(90deg, $success, lighten($success, 8%)); }
+.progress-bar.bg-warning { background: linear-gradient(90deg, $warning, lighten($warning, 8%)); color: #181300; }
+.progress-bar.bg-danger  { background: linear-gradient(90deg, $danger,  lighten($danger, 8%)); }
+
+/* Status badges */
+.cc-badge {
+  padding: .35rem .6rem;
+  border-radius: 999px;
+  font-size: .85rem;
+  display: inline-flex; align-items: center; gap: .4rem;
+  border: 1px solid transparent;
+}
+.cc-badge--ok    { background: rgba($success,.12); color: $success;   border-color: rgba($success,.3); }
+.cc-badge--warn  { background: rgba($warning,.12); color: $warning;   border-color: rgba($warning,.3); }
+.cc-badge--fail  { background: rgba($danger,.12);  color: $danger;    border-color: rgba($danger,.3); }
+.cc-badge--info  { background: rgba($primary,.12); color: $primary;   border-color: rgba($primary,.3); }
+
+/* Icon bubble */
+.cc-ico {
+  width: 42px; height: 42px; border-radius: 12px;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: rgba($primary,.10);
+  color: $primary;
+  border: 1px solid rgba($primary,.25);
+  box-shadow: inset 0 0 20px rgba($primary,.08);
+}
+
+/* Section header */
+.cc-section-title {
+  font-weight: 800;
+  letter-spacing: .3px;
+  border-left: 4px solid rgba($primary,.65);
+  padding-left: .6rem;
+}
+
+/* Disclaimer */
+.cc-disclaimer {
+  color: $muted;
+  background: rgba($text,.04);
+  border: 1px dashed rgba($primary,.2);
+  border-radius: 14px;
+}
+
+/* Small utilities */
+.hr-soft {
+  border: none; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba($text,.12), transparent);
+}
