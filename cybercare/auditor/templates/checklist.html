@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h2 class="mb-4">✅ Compliance Checklist (Art. 11)</h2>
+
+<form method="post" class="card p-4 shadow-sm">
+  {% csrf_token %}
+  <div class="mb-3">
+    <label class="form-label">Ai firewall activ?</label>
+    <select name="firewall" class="form-select">
+      <option value="yes">Da</option>
+      <option value="no">Nu</option>
+    </select>
+  </div>
+  <div class="mb-3">
+    <label class="form-label">Ai backup testat recent?</label>
+    <select name="backup" class="form-select">
+      <option value="yes">Da</option>
+      <option value="no">Nu</option>
+    </select>
+  </div>
+  <div class="mb-3">
+    <label class="form-label">Ai activat 2FA/MFA?</label>
+    <select name="mfa" class="form-select">
+      <option value="yes">Da</option>
+      <option value="no">Nu</option>
+    </select>
+  </div>
+  <div class="mb-3">
+    <label class="form-label">Ai aplicat patch-uri recente?</label>
+    <select name="patching" class="form-select">
+      <option value="yes">Da</option>
+      <option value="no">Nu</option>
+    </select>
+  </div>
+  <button class="btn btn-primary">Trimite</button>
+</form>
+
+{% if score is not None %}
+  <div class="alert alert-info mt-4">
+    Scor conformitate internă: <b>{{ score }}%</b>
+  </div>
+{% endif %}
+
+{% endblock %}

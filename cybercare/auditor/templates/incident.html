@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h2 class="mb-4">🚨 Incident Reporter – Pas {{ step }}</h2>
+
+<form method="post" class="card p-4 shadow-sm">
+  {% csrf_token %}
+  {% if step == 1 %}
+    <div class="mb-3">
+      <label class="form-label">Descriere inițială</label>
+      <textarea name="initial" class="form-control" rows="4"></textarea>
+    </div>
+  {% elif step == 2 %}
+    <div class="mb-3">
+      <label class="form-label">Update progres</label>
+      <textarea name="update" class="form-control" rows="4"></textarea>
+    </div>
+  {% elif step == 3 %}
+    <div class="mb-3">
+      <label class="form-label">Raport final</label>
+      <textarea name="final" class="form-control" rows="4"></textarea>
+    </div>
+  {% endif %}
+  <button class="btn btn-primary">
+    {% if step < 3 %}Următorul{% else %}Finalizează{% endif %}
+  </button>
+</form>
+
+{% if data %}
+  <div class="mt-5">
+    <h4>📄 Rezumat Incident</h4>
+    <ul class="list-group">
+      {% if data.initial %}<li class="list-group-item"><b>Inițial:</b> {{ data.initial }}</li>{% endif %}
+      {% if data.update %}<li class="list-group-item"><b>Update:</b> {{ data.update }}</li>{% endif %}
+      {% if data.final %}<li class="list-group-item"><b>Final:</b> {{ data.final }}</li>{% endif %}
+    </ul>
+  </div>
+{% endif %}
+
+{% endblock %}

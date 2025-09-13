@@ -1,22 +1,20 @@
 from django.shortcuts import render
-import socket
-import ssl
-import requests
-import datetime
-import dns.resolver
-import math
+from django.http import JsonResponse, HttpResponse
+import socket, ssl, requests, datetime, dns.resolver, math, io
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
+from reportlab.lib.styles import getSampleStyleSheet
 
 
 def dashboard(request):
     result = None
+    history = request.session.get("history", [])
+
     if request.method == "POST":
         host = request.POST.get("host", "").strip()
         findings = []
         score = 100
 
-        # ========================
-        # 1. Scanare Porturi
-        # ========================
+        # 1. Porturi
         open_ports = []
         for p in [21, 22, 25, 80, 443]:
             try:
@@ -46,9 +44,7 @@ def dashboard(request):
                 "recommendation": "OK"
             })
 
-        # ========================
         # 2. TLS & Certificat
-        # ========================
         try:
             ctx = ssl.create_default_context()
             with ctx.wrap_socket(socket.socket(), server_hostname=host) as s:
@@ -78,7 +74,6 @@ def dashboard(request):
             })
             if legacy:
                 score -= 10
-
         except:
             findings.append({
                 "section": "TLS & Certificate",
@@ -88,9 +83,7 @@ def dashboard(request):
             })
             score -= 20
 
-        # ========================
-        # 3. Web Security Headers
-        # ========================
+        # 3. Web Headers
         try:
             r = requests.get(f"https://{host}", timeout=3)
             h = {k.lower(): v for k, v in r.headers.items()}
@@ -106,21 +99,20 @@ def dashboard(request):
             if "strict-transport-security" in h:
                 findings.append({"section": "Web Headers", "status": "✅", "details": "HSTS activat", "recommendation": "OK"})
             else:
-                findings.append({"section": "Web Headers", "status": "❌", "details": "HSTS lipsă", "recommendation": "Activează HSTS pentru HTTPS strict."})
+                findings.append({"section": "Web Headers", "status": "❌", "details": "HSTS lipsă", "recommendation": "Activează HSTS."})
                 score -= 10
 
             if "content-security-policy" in h:
                 findings.append({"section": "Web Headers", "status": "✅", "details": "CSP prezent", "recommendation": "OK"})
             else:
-                findings.append({"section": "Web Headers", "status": "❌", "details": "CSP lipsă", "recommendation": "Adaugă CSP pentru prevenirea atacurilor XSS."})
+                findings.append({"section": "Web Headers", "status": "❌", "details": "CSP lipsă", "recommendation": "Adaugă CSP pentru protecție XSS."})
                 score -= 10
 
             if h.get("x-frame-options", "").lower() in ("deny", "sameorigin"):
                 findings.append({"section": "Web Headers", "status": "✅", "details": "X-Frame-Options setat", "recommendation": "OK"})
             else:
-                findings.append({"section": "Web Headers", "status": "⚠️", "details": "X-Frame-Options lipsă", "recommendation": "Adaugă X-Frame-Options pentru protecție clickjacking."})
+                findings.append({"section": "Web Headers", "status": "⚠️", "details": "X-Frame-Options lipsă", "recommendation": "Adaugă X-Frame-Options."})
                 score -= 5
-
         except:
             findings.append({
                 "section": "Web Headers",
@@ -130,9 +122,7 @@ def dashboard(request):
             })
             score -= 15
 
-        # ========================
-        # 4. Email Authentication (SPF simplu)
-        # ========================
+        # 4. Email Auth (SPF simplu)
         try:
             domain_parts = host.split(".")
             domain = ".".join(domain_parts[-2:])
@@ -162,9 +152,7 @@ def dashboard(request):
             })
             score -= 10
 
-        # ========================
-        # 5. Scor General + Cerc SVG
-        # ========================
+        # Scor general + cerc SVG
         if score >= 80:
             color = "🟢 Conform"
             bar_class = "progress-bar bg-success"
@@ -175,7 +163,6 @@ def dashboard(request):
             color = "🔴 Neconform"
             bar_class = "progress-bar bg-danger"
 
-        # Cerc SVG
         radius = 52
         circumference = 2 * math.pi * radius
         offset = circumference - (circumference * score / 100)
@@ -191,25 +178,24 @@ def dashboard(request):
             "offset": offset,
         }
 
-        # Salvează în sesiune pentru export PDF/JSON
+        # salvăm în sesiune pentru export și istoric
         request.session["last_result"] = result
+        history.append({"date": result["date"], "score": result["score"]})
+        request.session["history"] = history
 
-    return render(request, "dashboard.html", {"result": result})
+    return render(request, "dashboard.html", {"result": result, "history": history})
 
-from django.http import JsonResponse, HttpResponse
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
-from reportlab.lib.styles import getSampleStyleSheet
-import io
 
+# Export JSON
 def export_json(request):
-    """Exportă raportul curent ca JSON."""
     result = request.session.get("last_result")
     if not result:
         return JsonResponse({"error": "Nu există raport disponibil."}, status=400)
     return JsonResponse(result)
 
+
+# Export PDF
 def export_pdf(request):
-    """Exportă raportul curent ca PDF."""
     result = request.session.get("last_result")
     if not result:
         return HttpResponse("Nu există raport disponibil.", status=400)
@@ -223,14 +209,12 @@ def export_pdf(request):
     elements.append(Paragraph(f"🔒 Domeniu/IP: {result['host']}", styles["Normal"]))
     elements.append(Paragraph(f"Scor general: {result['color']} ({result['score']}%)", styles["Normal"]))
     elements.append(Spacer(1, 12))
-
     elements.append(Paragraph("<b>Rezultate detaliate:</b>", styles["Heading2"]))
     for f in result["findings"]:
         elements.append(Paragraph(f"<b>{f['section']} – {f['status']}</b>", styles["Heading3"]))
         elements.append(Paragraph(f"Detalii: {f['details']}", styles["Normal"]))
         elements.append(Paragraph(f"Recomandare: {f['recommendation']}", styles["Normal"]))
         elements.append(Spacer(1, 8))
-
     elements.append(Spacer(1, 12))
     elements.append(Paragraph(
         "Disclaimer: Acest raport are scop informativ și educativ. "
@@ -240,7 +224,38 @@ def export_pdf(request):
 
     doc.build(elements)
     buffer.seek(0)
-
     response = HttpResponse(buffer, content_type="application/pdf")
     response["Content-Disposition"] = 'attachment; filename=\"raport_audit.pdf\"'
     return response
+
+# Compliance Checklist
+def checklist(request):
+    score = None
+    if request.method == "POST":
+        answers = request.POST
+        total = 0
+        ok = 0
+        for key, val in answers.items():
+            if val in ("yes", "no"):
+                total += 1
+                if val == "yes":
+                    ok += 1
+        score = int((ok / total) * 100) if total else 0
+
+    return render(request, "checklist.html", {"score": score})
+
+# Incident Reporter (Art. 12 – trei pași)
+def incident_report(request):
+    step = int(request.GET.get("step", 1))
+    data = request.session.get("incident", {})
+
+    if request.method == "POST":
+        for k, v in request.POST.items():
+            if k != "csrfmiddlewaretoken":
+                data[k] = v
+        request.session["incident"] = data
+        step += 1
+        if step > 3:
+            step = 3
+
+    return render(request, "incident.html", {"step": step, "data": data})

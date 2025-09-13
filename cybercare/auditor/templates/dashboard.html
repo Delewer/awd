@@ -1,172 +1,104 @@
-<!DOCTYPE html>
-<html lang="ro">
-<head>
-  <meta charset="UTF-8">
-  <title>CyberCare – Mini-Audit Dashboard</title>
+{% extends "base.html" %}
+{% block content %}
 
-  <!-- Bootstrap + Icons -->
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
-
-  <!-- Tema CyberCare -->
-  <link href="/static/css/cyber.css" rel="stylesheet">
-
-  <style>
-    /* Cerc progres SVG */
-    .progress-ring {
-      transform: rotate(-90deg);
-    }
-    .progress-ring__circle {
-      transition: stroke-dashoffset 0.35s;
-      transform-origin: 50% 50%;
-    }
-    .cc-score-icon {
-      font-size: 2.2rem;
-    }
-  </style>
-</head>
-<body>
-
-<!-- Banda legală -->
-<div class="bg-dark text-light py-2 px-3 mb-4 text-center" style="font-size:0.9rem; border-bottom: 2px solid #00d1ff;">
-  ⚖️ Conformitate cu <strong>Legea nr. 142/2023</strong> și <strong>HG nr. 49/2025</strong>
-  (Art. 11 – măsuri minime, Art. 12 – notificare incidente)
+<!-- Banda lege -->
+<div class="bg-dark text-light py-2 px-3 mb-4 text-center">
+  ⚖️ Conformitate cu <strong>Legea 142/2023</strong> și <strong>HG 49/2025</strong>
 </div>
 
-<div class="container container-cc py-5">
+<h1 class="mb-4 text-center">🔒 CyberCare – Mini-Audit Dashboard</h1>
 
-  <!-- HERO -->
-  <div class="cc-hero p-4 p-md-5 mb-4">
-    <div class="d-flex align-items-center gap-3 mb-3">
-      <span class="cc-ico"><i class="bi bi-shield-lock"></i></span>
-      <h1 class="cc-hero__title m-0">CyberCare – Mini-Audit Dashboard</h1>
-    </div>
-    <p class="cc-hero__hint m-0">
-      Introdu un domeniu/IP pentru o scanare externă rapidă. Raportul afișează scor vizual și recomandări clare.
-    </p>
+<!-- Formular de scanare -->
+<form method="post" class="mb-5">
+  {% csrf_token %}
+  <div class="input-group input-group-lg">
+    <input type="text" name="host" placeholder="ex: example.com" class="form-control" required>
+    <button class="btn btn-primary"><i class="bi bi-radar me-2"></i>Scanează</button>
+  </div>
+</form>
 
-    <form method="post" class="mt-4">
-      {% csrf_token %}
-      <div class="input-group input-group-lg">
-        <input type="text" name="host" placeholder="ex: example.com" class="form-control cc-input" required>
-        <button class="btn cc-btn">
-          <i class="bi bi-radar me-2"></i>Scanează
-        </button>
+{% if result %}
+  <!-- Rezumat -->
+  <div class="card shadow p-4 mb-4">
+    <div class="row align-items-center">
+      <div class="col-md-7 mb-4 mb-md-0">
+        <p>📅 <b>{{ result.date }}</b> — Domeniu/IP: <b>{{ result.host }}</b></p>
+        <p><b>Scor:</b> {{ result.color }} ({{ result.score }}%)</p>
       </div>
-    </form>
+      <div class="col-md-5 text-center">
+        <!-- Cerc progres SVG -->
+        <svg class="progress-ring" width="120" height="120" style="transform: rotate(-90deg);">
+          <circle stroke="#ddd" stroke-width="10" fill="transparent" r="52" cx="60" cy="60"/>
+          <circle stroke="{% if result.bar_class == 'progress-bar bg-success' %}#00d48f{% elif result.bar_class == 'progress-bar bg-warning' %}#ffcc00{% else %}#ff4d6d{% endif %}"
+                  stroke-width="10" fill="transparent" r="52" cx="60" cy="60"
+                  stroke-dasharray="{{ result.circumference }}"
+                  stroke-dashoffset="{{ result.offset }}"
+                  style="transition: stroke-dashoffset 0.35s;"/>
+        </svg>
+
+        <!-- Icon scor -->
+        <div class="mt-2">
+          {% if result.score >= 80 %}
+            <i class="bi bi-trophy-fill text-success" style="font-size:2.2rem;"></i>
+          {% elif result.score >= 60 %}
+            <i class="bi bi-award-fill text-warning" style="font-size:2.2rem;"></i>
+          {% else %}
+            <i class="bi bi-exclamation-octagon-fill text-danger" style="font-size:2.2rem;"></i>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <div class="mt-3">
+      <a href="{% url 'export_pdf' %}" class="btn btn-outline-danger btn-sm">📄 PDF</a>
+      <a href="{% url 'export_json' %}" class="btn btn-outline-secondary btn-sm">🗂️ JSON</a>
+    </div>
   </div>
 
-  {% if result %}
-    <!-- REZUMAT GENERAL -->
-    <div class="cc-card p-4 mb-4">
-      <div class="row align-items-center">
-        <div class="col-md-7 mb-4 mb-md-0">
-          <div class="d-flex align-items-center gap-3">
-            <span class="cc-ico"><i class="bi bi-speedometer2"></i></span>
-            <div>
-              <div class="fw-bold">📅 Data scanării: {{ result.date }}</div>
-              <div><span class="text-muted">Domeniu/IP:</span> <strong>{{ result.host }}</strong></div>
-            </div>
-          </div>
-        </div>
+  <!-- Istoric -->
+  <div class="card shadow p-4 mb-4">
+    <h5>Evoluția scorului</h5>
+    <canvas id="historyChart" height="120"></canvas>
+  </div>
 
-        <!-- CERC DE PROGRES -->
-        <div class="col-md-5 text-center">
-          <svg class="progress-ring" width="120" height="120">
-            <circle class="progress-ring__circle"
-                    stroke="#2d3748"
-                    stroke-width="10"
-                    fill="transparent"
-                    r="52"
-                    cx="60"
-                    cy="60"/>
-            <circle class="progress-ring__circle"
-                    stroke="{% if result.bar_class == 'progress-bar bg-success' %}#00d48f{% elif result.bar_class == 'progress-bar bg-warning' %}#ffcc00{% else %}#ff4d6d{% endif %}" 
-                    stroke-width="10"
-                    fill="transparent"
-                    r="52"
-                    cx="60"
-                    cy="60"
-                    stroke-dasharray="{{ result.circumference }}"
-                    stroke-dashoffset="{{ result.offset }}"/>
-          </svg>
-          <div class="mt-2">
-            {% if result.score >= 80 %}
-              <i class="bi bi-trophy-fill text-success cc-score-icon"></i>
-            {% elif result.score >= 60 %}
-              <i class="bi bi-award-fill text-warning cc-score-icon"></i>
-            {% else %}
-              <i class="bi bi-exclamation-octagon-fill text-danger cc-score-icon"></i>
-            {% endif %}
-            <div class="fw-bold mt-1">{{ result.color }}</div>
-          </div>
+  <script>
+    const ctx = document.getElementById('historyChart');
+    new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: [{% for h in history %}"{{ h.date }}"{% if not forloop.last %}, {% endif %}{% endfor %}],
+        datasets: [{
+          label: 'Scor de conformitate',
+          data: [{% for h in history %}{{ h.score }}{% if not forloop.last %}, {% endif %}{% endfor %}],
+          borderColor: '#007bff',
+          backgroundColor: 'rgba(0,123,255,0.1)',
+          tension: 0.3,
+          fill: true
+        }]
+      }
+    });
+  </script>
+
+  <!-- Detalii -->
+  <h4 class="mb-3">Rezultate detaliate</h4>
+  <div class="row">
+    {% for f in result.findings %}
+      <div class="col-md-6 mb-3">
+        <div class="card p-3 h-100 shadow-sm">
+          <h5>{{ f.section }} – {{ f.status }}</h5>
+          <p><b>Detalii:</b> {{ f.details }}</p>
+          <p><b>Recomandare:</b> {{ f.recommendation }}</p>
         </div>
       </div>
+    {% endfor %}
+  </div>
 
-      <hr class="hr-soft my-4">
+  <!-- Disclaimer -->
+  <div class="alert alert-secondary mt-4">
+    <i>
+      Acest raport are scop informativ și educativ. Nu înlocuiește un audit extern autorizat conform HG nr. 49/2025.
+    </i>
+  </div>
+{% endif %}
 
-      <!-- Butoane export -->
-      <div class="d-flex gap-2">
-        <a href="{% url 'export_pdf' %}" class="btn btn-outline-light">
-          <i class="bi bi-filetype-pdf me-2"></i>Export PDF
-        </a>
-        <a href="{% url 'export_json' %}" class="btn btn-outline-light">
-          <i class="bi bi-filetype-json me-2"></i>Export JSON
-        </a>
-      </div>
-    </div>
-
-    <!-- DETALII -->
-    <h4 class="cc-section-title mb-3">Rezultate detaliate</h4>
-    <div class="row">
-      {% for f in result.findings %}
-        <div class="col-md-6 mb-3">
-          <div class="cc-card p-3 h-100">
-            <div class="d-flex align-items-center justify-content-between mb-2">
-              <div class="d-flex align-items-center gap-2">
-                {% if "Internet Exposure" in f.section %}
-                  <span class="cc-ico"><i class="bi bi-router"></i></span>
-                {% elif "TLS" in f.section %}
-                  <span class="cc-ico"><i class="bi bi-lock"></i></span>
-                {% elif "Web Headers" in f.section %}
-                  <span class="cc-ico"><i class="bi bi-code-slash"></i></span>
-                {% elif "Email Auth" in f.section %}
-                  <span class="cc-ico"><i class="bi bi-envelope-check"></i></span>
-                {% elif "Server Banner" in f.section %}
-                  <span class="cc-ico"><i class="bi bi-activity"></i></span>
-                {% else %}
-                  <span class="cc-ico"><i class="bi bi-shield-check"></i></span>
-                {% endif %}
-                <h5 class="cc-card__title m-0">{{ f.section }}</h5>
-              </div>
-
-              {% if "✅" in f.status %}
-                <span class="cc-badge cc-badge--ok"><i class="bi bi-check-circle"></i> OK</span>
-              {% elif "⚠️" in f.status %}
-                <span class="cc-badge cc-badge--warn"><i class="bi bi-exclamation-triangle"></i> Atenție</span>
-              {% elif "❌" in f.status %}
-                <span class="cc-badge cc-badge--fail"><i class="bi bi-x-octagon"></i> Problemă</span>
-              {% else %}
-                <span class="cc-badge cc-badge--info"><i class="bi bi-info-circle"></i> Info</span>
-              {% endif %}
-            </div>
-
-            <div class="mb-2"><span class="text-muted">Detalii:</span> {{ f.details }}</div>
-            <div class="mb-0"><span class="text-muted">Recomandare:</span> {{ f.recommendation }}</div>
-          </div>
-        </div>
-      {% endfor %}
-    </div>
-
-    <!-- DISCLAIMER -->
-    <div class="cc-disclaimer p-3 mt-4">
-      <i>
-        Acest raport are scop informativ și educativ. Nu înlocuiește un audit extern autorizat conform HG nr. 49/2025.
-        Verifică doar partea vizibilă pe internet, nu procesele interne.
-      </i>
-    </div>
-  {% endif %}
-
-</div>
-</body>
-</html>
+{% endblock %}
